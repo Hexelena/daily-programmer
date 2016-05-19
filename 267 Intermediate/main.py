@@ -10,10 +10,14 @@ def y_delta(res1, res2, res3):
 	pass
 class Nodelist:
 	def __init__(self):
+		self.additional_node_name = 1
 		self.list = []
 
-	def add_node(self, name):
+	def add_setup_node(self, name):
 		self.list.append(Node(name, self))
+
+	def add_new_node(self, name):
+		self.list.insert(-1, Node(name, self))
 
 	def get_node(self, name):
 		if type(name) == Node:
@@ -30,7 +34,7 @@ class Node:
 		self.name = name
 		self.nl = parent
 		self.rl = []
-		pass
+		
 	def add_resistance(self, t_node, res):
 		self.rl.append([self.nl.get_node(t_node), res])
 
@@ -45,13 +49,12 @@ class Node:
 				if el[0].name == node:
 					count += 1
 		else:
-			raise TypeError('can not use type: {}'.format(type(node)))
+			raise TypeError('can not use type: {}'.format(str(type(node))))
 
 		return count
 
 def simplify(nl):
 	# parallel 
-	print('')
 	for el in nl.get_list():
 		for i in range(0, len(el.rl)):
 			for j in range(i + 1, len(el.rl)):
@@ -132,6 +135,61 @@ def simplify(nl):
 
 				return True
 
+	# DELTA - Y:
+	for el in nl.get_list():
+		if len(el.rl) >= 2:
+			for i in range(0, len(el.rl)):
+				for j in range(i+1, len(el.rl)):
+					first_node, second_node, third_node = el, el.rl[i][0], el.rl[j][0]
+					# condition for Delta-Y transformation (with an additional check if
+					# they are properly parallelized(only one connection to the other nodes.)
+					if first_node.count_conns(second_node) == 1\
+					and first_node.count_conns(third_node) == 1\
+					and second_node.count_conns(third_node) == 1:
+						print('criteria for DELTA-Y met')
+						print(first_node.name, second_node.name, third_node.name)
+						# create the new node that will be needed.
+						nl.add_new_node(str(nl.additional_node_name))
+						#new_node = Node(str(nl.additional_node_name),nl)
+						nl.additional_node_name += 1
+						new_node = nl.get_node(str(nl.additional_node_name - 1))
+						print('new_node.name: ', new_node.name)
+						r12 = el.rl[i][1]
+						r13 = el.rl[j][1]
+						# too lazy to write better code. But i already checked that it will
+						# be a list of length 1... so why not
+						r23 = [x for x in second_node.rl if x[0] is third_node][0][1]
+
+						# calculate new values
+						r_sum = r12 + r13 + r23
+						r1 = r12*r13/r_sum
+						r2 = r23*r12/r_sum
+						r3 = r13*r23/r_sum
+						print('r1,r2,r3: ', r1, r2, r3)
+
+						# delete old connections
+						third_node.rl.remove([second_node,r23])
+						third_node.rl.remove([first_node, r13])
+
+						second_node.rl.remove([first_node, r12])
+						second_node.rl.remove([third_node, r23])
+
+						first_node.rl.remove([second_node, r12])
+						first_node.rl.remove([third_node, r13])
+
+						# create new connections to new new node
+
+						first_node.add_resistance(new_node, r1)
+						second_node.add_resistance(new_node, r2)
+						third_node.add_resistance(new_node, r3)
+
+						new_node.add_resistance(first_node, r1)
+						new_node.add_resistance(second_node, r2)
+						new_node.add_resistance(third_node, r3)
+
+						return True
+
+
 
 	print('nothing to simplify')
 	return False
@@ -139,10 +197,10 @@ def simplify(nl):
 
 def main():
 	nl = Nodelist()
-	with open('input3.txt') as f:
+	with open('input_big.txt') as f:
 		# parse first line as list of nodes
 		for name in [x.strip() for x in f.readline().split(' ')]:
-			nl.add_node(name)
+			nl.add_setup_node(name)
 		# parse resistors			
 		for line in f.readlines():
 			line = line.strip()
@@ -160,6 +218,8 @@ def main():
 
 		if not simplify(nl):
 			break
+
+
 	print('\n%%%%%%%%%%%%%%')
 	print('End of program')
 
