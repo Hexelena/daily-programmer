@@ -110,13 +110,13 @@ def simplify(nl):
 				first_conn, second_conn, third_conn = el.rl
 				r1, r2, r3 = first_conn[1], second_conn[1], third_conn[1]
 				r_p = r1*r2 + r1*r3 + r2*r3
-				print('r_p: ', r_p)
 				r12 = r_p/r3
 				r13 = r_p/r2
 				r23 = r_p/r1
 
 				first_node, second_node, third_node = first_conn[0], second_conn[0], third_conn[0]
 
+				print('found possibility for Y->DELTA on node',first_node.name, 'with nodes', second_node.name, 'and', third_node.name)
 				# clear connections to current node
 				first_node.rl.remove([el, r1])
 				second_node.rl.remove([el, r2])
@@ -146,14 +146,13 @@ def simplify(nl):
 					if first_node.count_conns(second_node) == 1\
 					and first_node.count_conns(third_node) == 1\
 					and second_node.count_conns(third_node) == 1:
-						print('criteria for DELTA-Y met')
-						print(first_node.name, second_node.name, third_node.name)
+						print('found possibility for DELTA->Y on node',first_node.name, 'with nodes', second_node.name, 'and', third_node.name)
+
 						# create the new node that will be needed.
 						nl.add_new_node(str(nl.additional_node_name))
 						#new_node = Node(str(nl.additional_node_name),nl)
 						nl.additional_node_name += 1
 						new_node = nl.get_node(str(nl.additional_node_name - 1))
-						print('new_node.name: ', new_node.name)
 						r12 = el.rl[i][1]
 						r13 = el.rl[j][1]
 						# too lazy to write better code. But i already checked that it will
@@ -165,7 +164,6 @@ def simplify(nl):
 						r1 = r12*r13/r_sum
 						r2 = r23*r12/r_sum
 						r3 = r13*r23/r_sum
-						print('r1,r2,r3: ', r1, r2, r3)
 
 						# delete old connections
 						third_node.rl.remove([second_node,r23])
@@ -197,7 +195,7 @@ def simplify(nl):
 
 def main():
 	nl = Nodelist()
-	with open('input_big.txt') as f:
+	with open('input4x4.txt') as f:
 		# parse first line as list of nodes
 		for name in [x.strip() for x in f.readline().split(' ')]:
 			nl.add_setup_node(name)
@@ -208,17 +206,27 @@ def main():
 			nl.get_node(n1).add_resistance(n2, int(res))
 			nl.get_node(n2).add_resistance(n1, int(res))
 	
+	iter_num = 1
+	print('%%%%%%%%%%%%%%')
+	print('initial grid:')
+	for element in nl.get_list():
+		print(element.name)
+		print('\t', [(el[0].name, el[1]) for el in element.rl])
 
+	input('press any key to start')
+	
 	while True:
-		print('%%%%%%%%%%%%%%')
-		print('current state:')
-		for element in nl.get_list():
-			print(element.name)
-			print('\t', [(el[0].name, el[1]) for el in element.rl])
+		print('Iteration No.{}'.format(iter_num))
+		iter_num += 1
 
 		if not simplify(nl):
 			break
-
+	
+	print('%%%%%%%%%%%%%%')
+	print('final grid:')
+	for element in nl.get_list():
+		print(element.name)
+		print('\t', [(el[0].name, el[1]) for el in element.rl])
 
 	print('\n%%%%%%%%%%%%%%')
 	print('End of program')
