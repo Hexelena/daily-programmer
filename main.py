@@ -42,7 +42,7 @@ class Node:
 					count += 1
 		elif type(node) == str:
 			for el in self.rl:
-				if el.name == node_name:
+				if el[0].name == node:
 					count += 1
 		else:
 			raise TypeError('can not use type: {}'.format(type(node)))
@@ -57,6 +57,7 @@ class Node:
 
 def simplify(nl):
 	# parallel 
+	print('')
 	for el in nl.get_list():
 		for i in range(0, len(el.rl)):
 			for j in range(i + 1, len(el.rl)):
@@ -64,7 +65,7 @@ def simplify(nl):
 					res1 = el.rl[i][1]
 					res2 = el.rl[j][1]
 					other_node = el.rl[i][0]
-					print('found parallel link', other_node.name, res1, '|', other_node.name, res2)
+					print('found parallel link at node ', el.name, ': ', other_node.name, res1, '|', other_node.name, res2, end=" -> ")
 					new_res = parallel(res1, res2)
 					print(new_res)
 					# remove one resistance on other node
@@ -79,8 +80,30 @@ def simplify(nl):
 
 					return True
 	# serial
-	for el in nl.get_list():
-		pass
+	# slice off the first and last element since they are the start and end nodes.
+	for el in nl.get_list()[1:-1]:
+		if len(el.rl) == 2 and el.rl[0][0] is not el.rl[1][0]:
+			first_conn, second_conn = [x for x in el.rl if el.count_conns(x[0].name) == 1]
+			new_res = serial(first_conn[1], second_conn[1])
+
+			first_node = first_conn[0]
+			second_node = second_conn[0]
+
+			print('found serial link at node ', el.name, ': ', first_node.name, first_conn[1], '|', second_node.name, second_conn[1], end=" -> ")
+			print(new_res)
+
+			# remove old connections to current node
+			first_node.rl.remove([el, first_conn[1]])
+			second_node.rl.remove([el, second_conn[1]])
+
+			# establish connection with new resistance value
+			first_node.add_resistance(second_node, new_res)
+			second_node.add_resistance(first_node, new_res)
+
+			# clean up current node
+			el.rl.clear()
+
+			return True
 
 	print('nothing to simplify')
 	return False
@@ -88,7 +111,7 @@ def simplify(nl):
 
 def main():
 	nl = Nodelist()
-	with open('input_1.txt') as f:
+	with open('input2.txt') as f:
 		# parse first line as list of nodes
 		for name in [x.strip() for x in f.readline().split(' ')]:
 			nl.add_node(name)
