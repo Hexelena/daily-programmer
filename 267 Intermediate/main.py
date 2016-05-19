@@ -49,12 +49,6 @@ class Node:
 
 		return count
 
-#class Resistance:
-#	def __init__(self, frm, to, res):
-#		self.frm = frm
-#		self.to = to
-#		self.res = res
-
 def simplify(nl):
 	# parallel 
 	print('')
@@ -83,7 +77,7 @@ def simplify(nl):
 	# slice off the first and last element since they are the start and end nodes.
 	for el in nl.get_list()[1:-1]:
 		if len(el.rl) == 2 and el.rl[0][0] is not el.rl[1][0]:
-			first_conn, second_conn = [x for x in el.rl if el.count_conns(x[0].name) == 1]
+			first_conn, second_conn = el.rl#[x for x in el.rl if el.count_conns(x[0].name) == 1]
 			new_res = serial(first_conn[1], second_conn[1])
 
 			first_node = first_conn[0]
@@ -105,13 +99,47 @@ def simplify(nl):
 
 			return True
 
+	# Y -> DELTA
+	# slice off the first and last element since they are the start and end nodes.
+	for el in nl.get_list()[1:-1]:
+		if len(el.rl) == 3:
+			if [el.count_conns(x) for x in nl.get_list()].count(1) == 3:
+				first_conn, second_conn, third_conn = el.rl
+				r1, r2, r3 = first_conn[1], second_conn[1], third_conn[1]
+				r_p = r1*r2 + r1*r3 + r2*r3
+				print('r_p: ', r_p)
+				r12 = r_p/r3
+				r13 = r_p/r2
+				r23 = r_p/r1
+
+				first_node, second_node, third_node = first_conn[0], second_conn[0], third_conn[0]
+
+				# clear connections to current node
+				first_node.rl.remove([el, r1])
+				second_node.rl.remove([el, r2])
+				third_node.rl.remove([el, r3])
+
+				# clear connection from current node
+				el.rl.clear()
+
+				# create new connections
+				first_node.add_resistance(second_node, r12)
+				first_node.add_resistance(third_node, r13)
+				second_node.add_resistance(first_node, r12)
+				second_node.add_resistance(third_node, r23)
+				third_node.add_resistance(first_node, r13)
+				third_node.add_resistance(second_node, r23)
+
+				return True
+
+
 	print('nothing to simplify')
 	return False
 
 
 def main():
 	nl = Nodelist()
-	with open('input2.txt') as f:
+	with open('input3.txt') as f:
 		# parse first line as list of nodes
 		for name in [x.strip() for x in f.readline().split(' ')]:
 			nl.add_node(name)
